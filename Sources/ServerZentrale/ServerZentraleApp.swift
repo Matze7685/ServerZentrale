@@ -14,7 +14,7 @@ struct ServerZentraleApp: App {
         .menuBarExtraStyle(.window)
 
         Window("Weiterleitungen", id: "forwards") {
-            ForwardsView(store: forwards)
+            ForwardsView(store: forwards, model: model)
         }
 
         Window("Einrichtung", id: "setup") {

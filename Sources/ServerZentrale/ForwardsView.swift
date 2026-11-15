@@ -5,26 +5,24 @@ import UniformTypeIdentifiers
 /// Fenster „Weiterleitungen“: alle Adressen, die über den Mac mini zu Geräten im Heimnetz führen.
 struct ForwardsView: View {
     let store: ForwardStore
+    let model: ServerModel
     @State private var editing: Forward?
     @State private var isNew = false
     @State private var showImporter = false
     @State private var info: String?
     @State private var reach: [UUID: Bool] = [:]
+    @State private var pizzaReach: Bool?
     @AppStorage("raspberryIP") private var raspberryIP = "192.168.96.211"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if store.forwards.isEmpty {
-                ContentUnavailableView("Noch keine Weiterleitungen", systemImage: "arrow.triangle.branch",
-                                       description: Text("Mit „Hinzufügen“ oder „Caddyfile importieren“ anlegen."))
-            } else {
-                List {
-                    ForEach(store.forwards) { forward in
-                        row(forward)
-                    }
+            List {
+                pizzaRow
+                ForEach(store.forwards) { forward in
+                    row(forward)
                 }
-                .frame(minHeight: 220)
             }
+            .frame(minHeight: 220)
 
             if let error = store.lastError {
                 Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.callout)
@@ -63,6 +61,26 @@ struct ForwardsView: View {
         }
     }
 
+    /// Die Pizzaseite selbst (fest, wird beim Einrichten angelegt und kann hier nicht gelöscht werden).
+    private var pizzaRow: some View {
+        HStack {
+            Image(systemName: pizzaReach == true ? "checkmark.circle.fill"
+                  : pizzaReach == false ? "xmark.octagon.fill" : "circle.dashed")
+                .foregroundStyle(pizzaReach == true ? .green : pizzaReach == false ? .red : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                if let url = model.publicURL {
+                    Link((url.host() ?? url.absoluteString) + "  🍕", destination: url)
+                } else {
+                    Text("Pizzaseite (noch nicht eingerichtet)")
+                }
+                Text("→ Ordner \(model.repoPath)/docs")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("Fest").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
     private func row(_ forward: Forward) -> some View {
         HStack {
             Image(systemName: reach[forward.id] == true ? "checkmark.circle.fill"
@@ -82,6 +100,7 @@ struct ForwardsView: View {
     }
 
     private func checkReach() async {
+        pizzaReach = await TCPProbe.reachable(target: "127.0.0.1:\(SetupModel.localPort)")
         let list = store.forwards
         var result: [UUID: Bool] = [:]
         await withTaskGroup(of: (UUID, Bool).self) { group in
