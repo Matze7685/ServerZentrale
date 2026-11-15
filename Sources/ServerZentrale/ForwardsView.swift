@@ -11,13 +11,13 @@ struct ForwardsView: View {
     @State private var showImporter = false
     @State private var info: String?
     @State private var reach: [UUID: Bool] = [:]
-    @State private var pizzaReach: Bool?
-    @AppStorage("raspberryIP") private var raspberryIP = "192.168.96.211"
+    @State private var siteReach: Bool?
+    @AppStorage("legacyServerIP") private var legacyIP = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             List {
-                pizzaRow
+                if model.hasSite { siteRow }
                 ForEach(store.forwards) { forward in
                     row(forward)
                 }
@@ -37,8 +37,8 @@ struct ForwardsView: View {
                     editing = Forward(host: "", target: "")
                 }
                 Button("Caddyfile importieren …", systemImage: "square.and.arrow.down") { showImporter = true }
-                TextField("IP des Raspberry", text: $raspberryIP).frame(width: 130)
-                    .help("Ziele wie 127.0.0.1:80 im alten Caddyfile liegen auf dem Raspberry. Sie werden auf diese IP umgeschrieben.")
+                TextField("IP des alten Servers", text: $legacyIP).frame(width: 130)
+                    .help("Ziele wie 127.0.0.1:80 im alten Caddyfile liegen auf dem alten Server. Sie werden auf diese IP umgeschrieben.")
                 Spacer()
                 if store.isApplying { ProgressView().controlSize(.small) }
                 Button("Erreichbarkeit prüfen", systemImage: "arrow.clockwise") { Task { await checkReach() } }
@@ -61,19 +61,19 @@ struct ForwardsView: View {
         }
     }
 
-    /// Die Pizzaseite selbst (fest, wird beim Einrichten angelegt und kann hier nicht gelöscht werden).
-    private var pizzaRow: some View {
+    /// Die eigene Webseite (fest, wird in der Einrichtung festgelegt und kann hier nicht gelöscht werden).
+    private var siteRow: some View {
         HStack {
-            Image(systemName: pizzaReach == true ? "checkmark.circle.fill"
-                  : pizzaReach == false ? "xmark.octagon.fill" : "circle.dashed")
-                .foregroundStyle(pizzaReach == true ? .green : pizzaReach == false ? .red : .secondary)
+            Image(systemName: siteReach == true ? "checkmark.circle.fill"
+                  : siteReach == false ? "xmark.octagon.fill" : "circle.dashed")
+                .foregroundStyle(siteReach == true ? .green : siteReach == false ? .red : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 if let url = model.publicURL {
-                    Link((url.host() ?? url.absoluteString) + "  🍕", destination: url)
+                    Link((url.host() ?? url.absoluteString) + "  (Webseite)", destination: url)
                 } else {
-                    Text("Pizzaseite (noch nicht eingerichtet)")
+                    Text("Webseite (noch nicht eingerichtet)")
                 }
-                Text("→ Ordner \(model.repoPath)/docs")
+                Text("→ Ordner \(model.siteRoot)")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -100,7 +100,7 @@ struct ForwardsView: View {
     }
 
     private func checkReach() async {
-        pizzaReach = await TCPProbe.reachable(target: "127.0.0.1:\(SetupModel.localPort)")
+        if model.hasSite { siteReach = await TCPProbe.reachable(target: "127.0.0.1:\(SetupModel.localPort)") }
         let list = store.forwards
         var result: [UUID: Bool] = [:]
         await withTaskGroup(of: (UUID, Bool).self) { group in
@@ -116,7 +116,7 @@ struct ForwardsView: View {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else {
             info = "Datei konnte nicht gelesen werden."; return
         }
-        let parsed = CaddyImporter.parse(text, replaceLocalhostWith: raspberryIP.trimmingCharacters(in: .whitespaces))
+        let parsed = CaddyImporter.parse(text, replaceLocalhostWith: legacyIP.trimmingCharacters(in: .whitespaces))
         guard !parsed.forwards.isEmpty else {
             info = "Keine Weiterleitungen gefunden." + (parsed.skipped.isEmpty ? "" : " Übersprungen: \(parsed.skipped.joined(separator: ", "))")
             return
@@ -152,7 +152,7 @@ private struct ForwardEditor: View {
 
     var body: some View {
         Form {
-            TextField("Adresse", text: $forward.host, prompt: Text("ha.guderjahn.homeip.net"))
+            TextField("Adresse", text: $forward.host, prompt: Text("ha.meinhaus.example.net"))
             TextField("Ziel im Heimnetz", text: $forward.target, prompt: Text("192.168.96.90:8123"))
             Toggle("Zertifikat des Ziels nicht prüfen (z. B. Proxmox)", isOn: $forward.skipTLSVerify)
             Toggle("Mit Passwort schützen", isOn: $protect)

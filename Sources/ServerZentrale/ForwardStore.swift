@@ -1,8 +1,8 @@
 import Foundation
 import Observation
 
-/// Speichert die Weiterleitungen in ~/.mgpizza/weiterleitungen.json und erzeugt daraus
-/// ~/.mgpizza/sites/weiterleitungen.caddy, das der Webserver über "import" einliest.
+/// Speichert die Weiterleitungen in ~/.serverzentrale/weiterleitungen.json und erzeugt daraus
+/// ~/.serverzentrale/sites/weiterleitungen.caddy, das der Webserver über "import" einliest.
 @MainActor
 @Observable
 final class ForwardStore {

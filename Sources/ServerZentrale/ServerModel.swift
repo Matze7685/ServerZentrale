@@ -37,23 +37,57 @@ final class ServerModel {
     }
 
     static let home = FileManager.default.homeDirectoryForCurrentUser
-    static let stateDir = home.appending(path: ".mgpizza")
-    static let logsDir = home.appending(path: "Library/Logs/mgpizza")
+    /// Einstellungen. Beim ersten Zugriff wird ein alter Ordner ~/.mgpizza (frühere Version) übernommen.
+    static let stateDir: URL = {
+        let fm = FileManager.default
+        let new = home.appending(path: ".serverzentrale")
+        let old = home.appending(path: ".mgpizza")
+        if !fm.fileExists(atPath: new.path), fm.fileExists(atPath: old.path) {
+            try? fm.copyItem(at: old, to: new)
+            // Das alte Caddyfile verweist auf den alten Ordner; die Einrichtung schreibt es neu.
+            try? fm.removeItem(at: new.appending(path: "Caddyfile"))
+        }
+        return new
+    }()
+    static let logsDir = home.appending(path: "Library/Logs/ServerZentrale")
     static let launchAgents = home.appending(path: "Library/LaunchAgents")
-    static let webLabel = "de.mgpizza.webserver"
+    static let webLabel = "de.serverzentrale.webserver"
+    static let legacyWebLabel = "de.mgpizza.webserver"
 
     var checks: [Check] = []
     var lastUpdate: Date?
     var isBusy = false
     var message: String?
 
-    /// Ordner des geklonten Repos (in den Einstellungen änderbar).
-    var repoPath: String {
-        get { UserDefaults.standard.string(forKey: "repoPath") ?? Self.home.appending(path: "mgPizza_mk1").path }
-        set { UserDefaults.standard.set(newValue, forKey: "repoPath") }
+    /// Ordner einer eigenen Webseite, die unter der Hauptadresse ausgeliefert wird (leer = keine).
+    var siteFolder: String {
+        get { UserDefaults.standard.string(forKey: "siteFolder") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "siteFolder") }
+    }
+    /// Unterordner darin, der die Seite enthält (z. B. "docs"), leer = der Ordner selbst.
+    var siteSubfolder: String {
+        get { UserDefaults.standard.string(forKey: "siteSubfolder") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "siteSubfolder") }
+    }
+    /// Git-Adresse der Webseite zum Herunterladen und Aktualisieren (leer = keine).
+    var siteRepoURL: String {
+        get { UserDefaults.standard.string(forKey: "siteRepoURL") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "siteRepoURL") }
+    }
+    var hasSite: Bool { !siteFolder.isEmpty }
+    var siteRoot: String { siteSubfolder.isEmpty ? siteFolder : siteFolder + "/" + siteSubfolder }
+    /// Liegt die Webseite in einem Git-Ordner (dann gibt es „Webseite aktualisieren“)?
+    var canUpdateSite: Bool {
+        guard hasSite else { return false }
+        var url = URL(fileURLWithPath: siteRoot)
+        for _ in 0..<3 {
+            if FileManager.default.fileExists(atPath: url.appending(path: ".git").path) { return true }
+            url = url.deletingLastPathComponent()
+        }
+        return false
     }
 
-    /// Öffentliche Adresse, z. B. https://guderjahn.homeip.net (aus ~/.mgpizza/eigene-domain).
+    /// Öffentliche Adresse, z. B. https://meinhaus.example.net (aus ~/.serverzentrale/eigene-domain).
     var publicURL: URL? {
         let file = Self.stateDir.appending(path: "eigene-domain")
         guard let host = try? String(contentsOf: file, encoding: .utf8)
@@ -84,9 +118,11 @@ final class ServerModel {
         web.health = launchd.output.contains("state = running") ? .ok : .down("Läuft nicht")
         result.append(web)
 
-        var local = Check(id: "local", title: "Pizzaseite auf dem Mac", url: URL(string: "http://127.0.0.1:8080/"))
-        local.health = await Self.probe(local.url!)
-        result.append(local)
+        if hasSite {
+            var local = Check(id: "local", title: "Webseite auf dem Mac", url: URL(string: "http://127.0.0.1:8080/"))
+            local.health = await Self.probe(local.url!)
+            result.append(local)
+        }
 
         if let url = publicURL {
             var pub = Check(id: "public", title: url.host() ?? url.absoluteString, url: url)
@@ -132,9 +168,10 @@ final class ServerModel {
         }
     }
 
-    func updatePizzaPage() async {
-        await perform("Pizzaseite ist aktuell") {
-            await Shell.run("/usr/bin/git", ["pull", "--ff-only"], in: URL(fileURLWithPath: repoPath))
+    func updateSite() async {
+        let folder = siteRoot
+        await perform("Webseite ist aktuell") {
+            await Shell.run("/usr/bin/git", ["pull", "--ff-only"], in: URL(fileURLWithPath: folder))
         }
     }
 

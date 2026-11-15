@@ -1,9 +1,9 @@
 import Foundation
 
-/// Eine Weiterleitung: eine Adresse (z. B. ha.guderjahn.homeip.net) wird an ein Gerät im Heimnetz weitergereicht.
+/// Eine Weiterleitung: eine Adresse (z. B. ha.meinhaus.example.net) wird an ein Gerät im Heimnetz weitergereicht.
 struct Forward: Codable, Identifiable, Hashable {
     var id = UUID()
-    /// Vollständige Adresse ohne https://, z. B. "ha.guderjahn.homeip.net"
+    /// Vollständige Adresse ohne https://, z. B. "ha.meinhaus.example.net"
     var host: String
     /// Ziel im Heimnetz, z. B. "192.168.96.90:8123" oder "https://192.168.96.202:8006"
     var target: String
@@ -63,7 +63,7 @@ struct Forward: Codable, Identifiable, Hashable {
     }
 }
 
-/// Liest ein bestehendes Caddyfile (z. B. vom Raspberry) und macht daraus Weiterleitungen.
+/// Liest ein bestehendes Caddyfile (z. B. vom alten Server) und macht daraus Weiterleitungen.
 /// Versteht: Adresszeile, basicauth/basic_auth mit einem Benutzer, reverse_proxy, tls_insecure_skip_verify.
 enum CaddyImporter {
     struct Result {
@@ -85,7 +85,7 @@ enum CaddyImporter {
             let words = line.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
 
             if depth == 0, opens > 0, let first = words.first, first != "{" {
-                // Neue Seite, z. B. "https://ha.guderjahn.homeip.net {"
+                // Neue Seite, z. B. "https://ha.meinhaus.example.net {"
                 var host = first.lowercased()
                 for prefix in ["https://", "http://"] where host.hasPrefix(prefix) { host.removeFirst(prefix.count) }
                 if let colon = host.firstIndex(of: ":") { host = String(host[..<colon]) }
@@ -99,7 +99,7 @@ enum CaddyImporter {
                 } else if words.first == "reverse_proxy", words.count >= 2 {
                     var target = words[1]
                     for local in ["127.0.0.1", "localhost"] where target.contains(local) {
-                        // Ziel lag auf dem Raspberry selbst: ohne dessen IP nicht übernehmbar
+                        // Ziel lag auf dem alten Server selbst: ohne dessen IP nicht übernehmbar
                         target = localIP.isEmpty ? "" : target.replacingOccurrences(of: local, with: localIP)
                     }
                     current?.target = target

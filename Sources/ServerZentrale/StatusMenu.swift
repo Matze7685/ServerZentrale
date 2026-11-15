@@ -47,8 +47,10 @@ struct StatusMenu: View {
                 NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: "forwards")
             }
-            Button("Pizzaseite aktualisieren", systemImage: "arrow.down.circle") {
-                Task { await model.updatePizzaPage() }
+            if model.canUpdateSite {
+                Button("Webseite aktualisieren", systemImage: "arrow.down.circle") {
+                    Task { await model.updateSite() }
+                }
             }
             Button("Webserver neu starten", systemImage: "arrow.triangle.2.circlepath") {
                 Task { await model.restartWebserver() }

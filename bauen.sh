@@ -22,7 +22,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key><string>Server-Zentrale</string>
     <key>CFBundleDisplayName</key><string>Server-Zentrale</string>
-    <key>CFBundleIdentifier</key><string>de.mgpizza.serverzentrale</string>
+    <key>CFBundleIdentifier</key><string>de.serverzentrale.app</string>
     <key>CFBundleExecutable</key><string>ServerZentrale</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.0</string>

@@ -1,17 +1,31 @@
 import SwiftUI
+import AppKit
 
-/// Fenster „Einrichtung“: legt Webserver, Pizzaseite und Hintergrunddienst an.
+/// Fenster „Einrichtung“: legt Webserver und Hintergrunddienst an.
 struct SetupView: View {
     @State var setup: SetupModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Einrichtung").font(.title2.bold())
-            Text("Installiert den Webserver (Caddy), holt die Pizzaseite von GitHub und startet alles automatisch bei jeder Anmeldung. Kann jederzeit erneut ausgeführt werden.")
+            Text("Installiert den Webserver (Caddy) und startet ihn automatisch bei jeder Anmeldung. Kann jederzeit erneut ausgeführt werden, bestehende Weiterleitungen bleiben erhalten.")
                 .font(.callout).foregroundStyle(.secondary)
 
-            TextField("Deine Adresse", text: $setup.domain, prompt: Text("guderjahn.homeip.net"))
+            TextField("Deine Adresse", text: $setup.domain, prompt: Text("meinhaus.example.net"))
                 .textFieldStyle(.roundedBorder)
+
+            GroupBox("Eigene Webseite (optional)") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        TextField("Ordner", text: $setup.siteFolder, prompt: Text("leer = nur Weiterleitungen"))
+                        Button("Wählen …") { chooseFolder() }
+                    }
+                    TextField("Unterordner mit der Seite", text: $setup.siteSubfolder, prompt: Text("z. B. docs, sonst leer"))
+                    TextField("Git-Adresse zum Herunterladen", text: $setup.siteRepoURL, prompt: Text("https://github.com/…, sonst leer"))
+                }
+                .textFieldStyle(.roundedBorder)
+                .padding(4)
+            }
 
             ScrollView {
                 Text(setup.log.joined(separator: "\n"))
@@ -19,7 +33,7 @@ struct SetupView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
-            .frame(minHeight: 160)
+            .frame(minHeight: 130)
             .padding(8)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
 
@@ -40,6 +54,14 @@ struct SetupView: View {
             }
         }
         .padding(16)
-        .frame(width: 520, height: 420)
+        .frame(width: 540, height: 560)
+    }
+
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        if panel.runModal() == .OK, let url = panel.url { setup.siteFolder = url.path }
     }
 }
