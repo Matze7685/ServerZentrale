@@ -12,13 +12,21 @@ importiert das Caddyfile vom Raspberry und aktualisiert die Pizzaseite.
 
 Bei Fehlern bitte die Ausgabe von `swift build` schicken.
 
-## Voraussetzung
+## Erste Einrichtung
 
-Die App steuert den Webserver (Caddy), der bisher mit `hosting/mac-mini/einrichten.sh --domain …`
-aus dem Repo mgPizza_mk1 eingerichtet wird. Sie liest und schreibt dabei:
+Menü → **Einrichtung …** → Adresse prüfen → **Einrichten**. Die App
+1. installiert Caddy (Webserver) über Homebrew, falls es fehlt,
+2. lädt die Pizzaseite von GitHub nach `~/mgPizza_mk1` (nicht in Schreibtisch/Dokumente/Downloads),
+3. schreibt und prüft das Caddyfile,
+4. legt den Hintergrunddienst an (startet bei jeder Anmeldung).
 
-- `~/.mgpizza/weiterleitungen.json` und `~/.mgpizza/sites/weiterleitungen.caddy` (die Weiterleitungen)
-- `~/.mgpizza/Caddyfile` (wird von einrichten.sh angelegt)
-- Dienst `de.mgpizza.webserver` (launchd)
+Danach am Router (UDM): außen TCP 80 → Mac:8081 und TCP 443 → Mac:8443.
+Voraussetzung ist nur Homebrew ([brew.sh](https://brew.sh)).
+
+## Wo was liegt
+
+- `~/.mgpizza/` – Einstellungen: `Caddyfile`, `weiterleitungen.json`, `sites/weiterleitungen.caddy`, `eigene-domain`
+- `~/Library/LaunchAgents/de.mgpizza.webserver.plist` – Hintergrunddienst
+- `~/Library/Logs/mgpizza/` – Protokolle
 
 Passwort-Hashes stehen nur in diesen lokalen Dateien, nie im Repo.

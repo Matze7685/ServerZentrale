@@ -36,6 +36,13 @@ struct StatusMenu: View {
 
             Divider()
 
+            if !SetupModel.isSetUp {
+                Label("Noch nicht eingerichtet", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            }
+            Button("Einrichtung …", systemImage: "wrench.and.screwdriver") {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "setup")
+            }
             Button("Weiterleitungen (\(forwardCount)) …", systemImage: "arrow.triangle.branch") {
                 NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: "forwards")

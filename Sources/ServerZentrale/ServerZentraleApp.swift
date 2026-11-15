@@ -16,5 +16,9 @@ struct ServerZentraleApp: App {
         Window("Weiterleitungen", id: "forwards") {
             ForwardsView(store: forwards)
         }
+
+        Window("Einrichtung", id: "setup") {
+            SetupView(setup: SetupModel(model: model))
+        }
     }
 }

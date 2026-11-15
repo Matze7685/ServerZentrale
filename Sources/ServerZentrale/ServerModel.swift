@@ -39,6 +39,7 @@ final class ServerModel {
     static let home = FileManager.default.homeDirectoryForCurrentUser
     static let stateDir = home.appending(path: ".mgpizza")
     static let logsDir = home.appending(path: "Library/Logs/mgpizza")
+    static let launchAgents = home.appending(path: "Library/LaunchAgents")
     static let webLabel = "de.mgpizza.webserver"
 
     var checks: [Check] = []
