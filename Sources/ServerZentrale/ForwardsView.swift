@@ -154,7 +154,11 @@ private struct ForwardEditor: View {
         Form {
             TextField("Adresse", text: $forward.host, prompt: Text("ha.meinhaus.example.net"))
             TextField("Ziel im Heimnetz", text: $forward.target, prompt: Text("192.168.96.90:8123"))
-            Toggle("Zertifikat des Ziels nicht prüfen (z. B. Proxmox)", isOn: $forward.skipTLSVerify)
+                .onChange(of: forward.target) {
+                    // Proxmox (Port 8006/8007) spricht nur HTTPS mit eigenem Zertifikat
+                    if forward.isKnownSelfSignedTarget { forward.skipTLSVerify = true }
+                }
+            Toggle("Ziel spricht HTTPS mit eigenem Zertifikat (z. B. Proxmox)", isOn: $forward.skipTLSVerify)
             Toggle("Mit Passwort schützen", isOn: $protect)
             if protect {
                 TextField("Benutzername", text: $forward.user)
@@ -178,6 +182,9 @@ private struct ForwardEditor: View {
         defer { busy = false }
         var f = forward
         f.host = f.host.trimmingCharacters(in: .whitespaces).lowercased()
+        // "https://name.example.net/" wird oft mit Schema eingefügt; die Adresse braucht nur den Namen
+        for prefix in ["https://", "http://"] where f.host.hasPrefix(prefix) { f.host.removeFirst(prefix.count) }
+        while f.host.hasSuffix("/") { f.host.removeLast() }
         f.target = f.target.trimmingCharacters(in: .whitespaces)
         if protect {
             if !password.isEmpty {
