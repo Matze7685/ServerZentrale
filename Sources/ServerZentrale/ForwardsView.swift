@@ -182,6 +182,9 @@ private struct ForwardEditor: View {
         defer { busy = false }
         var f = forward
         f.host = f.host.trimmingCharacters(in: .whitespaces).lowercased()
+        // "https://name.example.net/" wird oft mit Schema eingefügt; die Adresse braucht nur den Namen
+        for prefix in ["https://", "http://"] where f.host.hasPrefix(prefix) { f.host.removeFirst(prefix.count) }
+        while f.host.hasSuffix("/") { f.host.removeLast() }
         f.target = f.target.trimmingCharacters(in: .whitespaces)
         if protect {
             if !password.isEmpty {
