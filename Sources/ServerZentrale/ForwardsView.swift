@@ -154,7 +154,11 @@ private struct ForwardEditor: View {
         Form {
             TextField("Adresse", text: $forward.host, prompt: Text("ha.meinhaus.example.net"))
             TextField("Ziel im Heimnetz", text: $forward.target, prompt: Text("192.168.96.90:8123"))
-            Toggle("Zertifikat des Ziels nicht prüfen (z. B. Proxmox)", isOn: $forward.skipTLSVerify)
+                .onChange(of: forward.target) {
+                    // Proxmox (Port 8006/8007) spricht nur HTTPS mit eigenem Zertifikat
+                    if forward.isKnownSelfSignedTarget { forward.skipTLSVerify = true }
+                }
+            Toggle("Ziel spricht HTTPS mit eigenem Zertifikat (z. B. Proxmox)", isOn: $forward.skipTLSVerify)
             Toggle("Mit Passwort schützen", isOn: $protect)
             if protect {
                 TextField("Benutzername", text: $forward.user)

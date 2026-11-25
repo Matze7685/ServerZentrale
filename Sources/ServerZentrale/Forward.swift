@@ -42,16 +42,59 @@ struct Forward: Codable, Identifiable, Hashable {
         return p
     }
 
+    // MARK: Verschlüsselte Ziele (z. B. Proxmox)
+
+    /// Ports, die nur HTTPS mit selbst ausgestelltem Zertifikat sprechen (8006 = Proxmox VE, 8007 = Proxmox Backup Server).
+    /// Wer dort unverschlüsselt anfragt, wird zurück auf https umgeleitet, und der Browser landet in einer Umleitungsschleife.
+    static let selfSignedHTTPSPorts: Set<Int> = [8006, 8007]
+
+    private var targetScheme: String? {
+        let lower = target.lowercased()
+        if lower.hasPrefix("https://") { return "https" }
+        if lower.hasPrefix("http://") { return "http" }
+        return nil
+    }
+
+    var targetPort: Int? {
+        var rest = target
+        if let range = rest.range(of: "://") { rest = String(rest[range.upperBound...]) }
+        guard let colon = rest.lastIndex(of: ":") else { return nil }
+        return Int(rest[rest.index(after: colon)...])
+    }
+
+    /// Bekanntes Gerät mit selbst ausgestelltem Zertifikat (Proxmox), erkannt am Port.
+    var isKnownSelfSignedTarget: Bool {
+        targetPort.map(Self.selfSignedHTTPSPorts.contains) ?? false
+    }
+
+    /// Spricht das Ziel HTTPS? Ausdrücklich per https://, über den Schalter „Zertifikat nicht prüfen“
+    /// (der nur bei HTTPS Sinn ergibt) oder weil es ein bekannter Proxmox-Port ist.
+    var usesHTTPS: Bool {
+        if let scheme = targetScheme { return scheme == "https" }
+        return skipTLSVerify || isKnownSelfSignedTarget
+    }
+
+    var ignoresCertificate: Bool {
+        usesHTTPS && (skipTLSVerify || isKnownSelfSignedTarget)
+    }
+
+    /// Ziel, wie Caddy es bekommt: ohne Schema angegebene HTTPS-Ziele erhalten https://,
+    /// sonst würde Caddy unverschlüsselt anfragen.
+    var upstream: String {
+        if targetScheme == nil, usesHTTPS { return "https://" + target }
+        return target
+    }
+
     /// Caddy-Block für diese Weiterleitung
     var caddyBlock: String {
         var lines = ["\(host) {"]
         if isProtected {
             lines += ["\tbasic_auth {", "\t\t\(user) \(passwordHash)", "\t}"]
         }
-        if skipTLSVerify {
-            lines += ["\treverse_proxy \(target) {", "\t\ttransport http {", "\t\t\ttls_insecure_skip_verify", "\t\t}", "\t}"]
+        if ignoresCertificate {
+            lines += ["\treverse_proxy \(upstream) {", "\t\ttransport http {", "\t\t\ttls_insecure_skip_verify", "\t\t}", "\t}"]
         } else {
-            lines.append("\treverse_proxy \(target)")
+            lines.append("\treverse_proxy \(upstream)")
         }
         lines.append("}")
         return lines.joined(separator: "\n")
